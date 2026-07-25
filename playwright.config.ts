@@ -4,9 +4,14 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 export default defineConfig({
+  workers: process.env.CI ? 4 : undefined,
+  retries: process.env.CI ? 2 : 0,
   testDir: './tests',
   fullyParallel: true,
-  reporter: 'html',
+  reporter: [
+    ['html'],
+    ['list']
+  ],
 
   use: {
     baseURL: process.env.BASE_URL,

@@ -1,0 +1,10 @@
+[init]
+	defaultBranch = none
+[fetch]
+	recurseSubmodules = false
+[credential]
+	interactive = never
+[gc]
+	autoDetach = false
+[include]
+	path = /Users/muqaddas.liaqat/Documents/sgAutomation (main)/builds/JlJ285aPB/0/muqaddas.liaqat/schoolgram-modules-automation.tmp/.gitlab-runner.ext.conf
