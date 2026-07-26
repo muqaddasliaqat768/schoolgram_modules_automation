@@ -3,7 +3,6 @@ stages:
 
 playwright_tests:
   stage: test
-
   image: mcr.microsoft.com/playwright:v1.54.0-jammy
 
   before_script:
@@ -11,10 +10,12 @@ playwright_tests:
     - npx playwright install --with-deps
 
   script:
-    - npx playwright test
+    - npx playwright test --reporter=junit
 
   artifacts:
     when: always
+    reports:
+      junit: results.xml
     paths:
       - playwright-report/
       - test-results/

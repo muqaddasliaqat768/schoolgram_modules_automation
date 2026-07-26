@@ -10,16 +10,17 @@ export default defineConfig({
   fullyParallel: true,
   reporter: [
     ['html'],
-    ['list']
+    ['list'],
+    ['junit', { outputFile: 'results.xml' }]
   ],
 
   use: {
-    baseURL: process.env.BASE_URL,
-    trace: 'on-first-retry',
-    screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
-    headless: false,
-  },
+  baseURL: process.env.BASE_URL,
+  trace: 'on-first-retry',
+  screenshot: 'only-on-failure',
+  video: 'retain-on-failure',
+  headless: !!process.env.CI,
+},
 
   projects: [
     {
