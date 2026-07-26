@@ -10,7 +10,7 @@ playwright_tests:
     - npx playwright install --with-deps
 
   script:
-    - npx playwright test --reporter=junit
+    - npx playwright test
 
   artifacts:
     when: always
