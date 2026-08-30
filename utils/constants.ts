@@ -1,8 +1,20 @@
-//Move all repeated strings into one place (Login only)
+// ---------------------------------------------------------------------------
+// Shared, environment-neutral constants for the whole suite.
+//
+// Anything host-specific (base URL, username, password) belongs in .env.test
+// and is read through utils/env.ts — NOT here. This file only holds values
+// that are the same on every environment: UI copy, route fragments, menu
+// labels and validation-message matchers.
+// ---------------------------------------------------------------------------
 
+import { env } from './env';
 
-//1. Login Page
-export const STORAGE_STATE = 'playwright/.auth/user.json';
+// --- Auth / login -----------------------------------------------------------
+
+// Per-environment path to the saved Playwright storage state (auth cookies),
+// produced by tests/auth.setup.ts and consumed by playwright.config.ts.
+export const STORAGE_STATE =
+  `playwright/.auth/user-${env.ENVIRONMENT}.json`;
 
 export const SESSION_TIMEOUT_MESSAGE =
   'Your session has timed out. Please log in again.';
@@ -19,7 +31,21 @@ export const SERVER_ERRORS = [
   '500 Internal Server Error',
 ];
 
-//2. User Management Page
+// --- Application routes ----------------------------------------------------
+
+// URL matchers for the SPA routes the specs assert on. Centralised so a route
+// rename is a one-line change. These are path fragments (not full URLs), so
+// they stay valid across every environment.
+export const ROUTES = {
+  LOGIN: /\/login\/index\.php/,
+  DASHBOARD: /\/my/,
+  COURSE_ENROL: /\/course-enrol/,
+  USERS_LIST: /\/users-list/,
+  USER_PROFILE: /\/user-profile/,
+  UPLOAD_USERS: /\/upload-users/,
+} as const;
+
+// --- User Management ------------------------------------------------------
 
 export const MENU = {
   USER_MANAGEMENT: 'User Management',
@@ -37,6 +63,9 @@ export const VALIDATION_MESSAGES = {
   USERNAME_REQUIRED:
     'Username is required.',
 
+  INVALID_USERNAME:
+    /Username must be/i,
+
   INVALID_EMAIL:
     /Please enter a valid email/i,
 
@@ -44,5 +73,3 @@ export const VALIDATION_MESSAGES = {
     /Password must contain/i,
 
 } as const;
-
-

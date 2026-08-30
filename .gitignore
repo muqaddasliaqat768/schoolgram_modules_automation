@@ -5,4 +5,9 @@ node_modules/
 playwright-report/
 test-results/
 playwright/.auth/
+results.xml
 .DS_Store
+
+.env.test
+.env.local
+playwright/.auth/
