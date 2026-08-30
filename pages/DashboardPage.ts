@@ -4,15 +4,10 @@ import { ROUTES } from '../utils/constants';
 import { login } from '../utils/login';
 
 /**
- * Page object for the Moodle dashboard ("/my/").
+ * Page object for the Moodle Dashboard.
  *
- * Every User Management spec starts from here (via its `beforeEach`), so this is
- * also where we recover from the suite's one structural weakness: all tests
- * share a single Moodle account and a single saved storageState. Moodle rotates
- * the session cookie on the first authenticated request, which can leave a later
- * test logged out. `goto()` detects that bounce to the login page and
- * re-authenticates in place instead of failing the whole run.
- * Proper fix (infra): give CI its own dedicated automation account.
+ * This page object contains the common actions and validations
+ * performed when a user lands on the Dashboard.
  */
 export class DashboardPage {
   readonly page: Page;
@@ -21,28 +16,47 @@ export class DashboardPage {
     this.page = page;
   }
 
+  /**
+   * Opens the Dashboard and verifies that the user is successfully
+   * redirected to the Dashboard page.
+   *
+   * If the user's saved session has expired, the user is logged in again
+   * and the Dashboard is reopened.
+   */
   async goto() {
-    // 'load' waits for every image/iframe on the dashboard and routinely blows
-    // the timeout on a cold, unthrottled run; 'domcontentloaded' matches how
-    // auth.setup / login navigate.
+    // Open the Dashboard without waiting for all images and other resources
+    // to finish loading. This makes navigation faster and more reliable.
     await this.page.goto('/my/', { waitUntil: 'domcontentloaded' });
 
-    // Saved session expired mid-run — log back in and retry the navigation.
+    // If the session has expired, Moodle redirects the user to the Login page.
+    // Log in again so the test can continue with a valid session.
     if (ROUTES.LOGIN.test(this.page.url())) {
       await login(this.page);
+
+      // After successful login, open the Dashboard again.
       await this.page.goto('/my/', { waitUntil: 'domcontentloaded' });
     }
 
+    // Confirm that the user has successfully reached the Dashboard.
     await expect(this.page).toHaveURL(ROUTES.DASHBOARD);
   }
 
+  /**
+   * Verifies that the Dashboard has loaded successfully.
+   *
+   * The navigation drawer is part of the main Dashboard layout,
+   * so its visibility confirms that the Dashboard UI is available.
+   */
   async verifyDashboardLoaded() {
-    // #nav-drawer is Moodle core markup with no role/label of its own; the id is
-    // stable across releases, so it's the reliable "dashboard shell rendered" signal.
+    // Verify that the Dashboard navigation area is visible to the user.
     await expect(this.page.locator('#nav-drawer')).toBeVisible();
   }
 
+  /**
+   * Opens the sidebar if it is currently collapsed.
+   */
   async openSidebar() {
+    // Ensure the sidebar is expanded before interacting with its options.
     await CheckAndExpandSidebar(this.page);
   }
 }

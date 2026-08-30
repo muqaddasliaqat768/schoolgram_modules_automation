@@ -1,17 +1,23 @@
-// Shape of a test user fixture (see test-data/userData.ts). `password` is the
-// value used for disposable users the tests create — it is NOT the admin login
-// password, which lives in .env.test.
+// Defines the information required to create or manage a user
+// in the User Management module.
+//
+// These fields represent the details an administrator would normally
+// provide when creating or updating a user.
 
 export interface User {
+  // User's first name.
+  firstName: string;
 
- firstName:string;
+  // User's last name / family name.
+  lastName: string;
 
- lastName:string;
+  // Unique username used by the user to identify/sign in to the system.
+  username: string;
 
- username:string;
+  // User's email address.
+  email: string;
 
- email:string;
-
- password:string;
-
+  // Password used for the test user.
+  // This is a test-user password, NOT the administrator's login password.
+  password: string;
 }

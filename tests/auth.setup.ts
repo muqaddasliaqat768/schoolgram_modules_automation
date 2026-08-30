@@ -1,20 +1,3 @@
-// ---------------------------------------------------------------------------
-// Auth setup project (runs once, before the chromium project — see
-// playwright.config.ts `dependencies`).
-//
-// What it does:
-//   1. Health-check the target environment; fail LOUDLY with a banner if it is
-//      down, so every dependent test is skipped instead of each failing slowly.
-//   2. Log in through the real UI (utils/login.ts), handling Moodle's stale
-//      login-token bounce and a possible session-timeout screen.
-//   3. Save the authenticated browser state to STORAGE_STATE
-//      (playwright/.auth/user-${ENV}.json), which the chromium project then
-//      loads so individual specs don't each re-login.
-//
-// All credentials/URLs come from utils/env.ts (.env.test locally, CI variables
-// in CI). Nothing environment-specific is hard-coded in this file.
-// ---------------------------------------------------------------------------
-
 import { test, expect, Page } from '@playwright/test';
 import fs from 'fs';
 
@@ -30,17 +13,38 @@ import {
 
 import { login } from '../utils/login';
 
+/**
+ * Authentication setup for the test suite.
+ *
+ * This setup runs before the main test project and prepares a valid
+ * logged-in session for the tests.
+ *
+ * User flow:
+ * 1. Verify that the selected environment is available.
+ * 2. Open the login page.
+ * 3. Log in using the configured test account.
+ * 4. Handle a session timeout if it occurs.
+ * 5. Verify that the login was successful.
+ * 6. Save the authenticated session for the remaining tests.
+ *
+ * Environment-specific values such as the URL and credentials are
+ * provided through the environment configuration.
+ */
 
-// ============================================================
-// Server Health Check
-// ============================================================
-
+/**
+ * Checks whether the test environment is available before starting
+ * the authentication process.
+ *
+ * If the server is unavailable, the setup stops immediately instead
+ * of allowing every dependent test to fail individually.
+ */
 async function checkServer(page: Page) {
   logger.info('Checking server status...');
 
   let response;
 
   try {
+    // Open the login page to confirm that the environment is reachable.
     response = await page.goto(
       `${env.BASE_URL}/login/index.php`,
       {
@@ -48,20 +52,37 @@ async function checkServer(page: Page) {
       }
     );
   } catch (error: unknown) {
-
     const message =
       `Unable to connect to ${env.ENVIRONMENT} environment.`;
 
-    console.error('\n================================================');
-    console.error(`🚨 ${env.ENVIRONMENT.toUpperCase()} ENVIRONMENT UNAVAILABLE`);
-    console.error('================================================');
-    console.error(`Environment: ${env.ENVIRONMENT}`);
-    console.error(`URL: ${env.BASE_URL}`);
-    console.error('Reason: Unable to connect to server');
-    console.error('Action: All dependent tests will not run.');
-    console.error('================================================\n');
+    console.error(
+      '\n================================================'
+    );
+    console.error(
+      `🚨 ${env.ENVIRONMENT.toUpperCase()} ENVIRONMENT UNAVAILABLE`
+    );
+    console.error(
+      '================================================'
+    );
+    console.error(
+      `Environment: ${env.ENVIRONMENT}`
+    );
+    console.error(
+      `URL: ${env.BASE_URL}`
+    );
+    console.error(
+      'Reason: Unable to connect to server'
+    );
+    console.error(
+      'Action: All dependent tests will not run.'
+    );
+    console.error(
+      '================================================\n'
+    );
 
-    logger.error(`TEST STOPPED: ${message}`);
+    logger.error(
+      `TEST STOPPED: ${message}`
+    );
 
     if (error instanceof Error) {
       logger.error(
@@ -80,6 +101,8 @@ async function checkServer(page: Page) {
     }`
   );
 
+  // Read the page content so known server-error messages can also
+  // be detected when the server returns an unexpected response page.
   const body =
     await page.locator('body').textContent();
 
@@ -94,25 +117,38 @@ async function checkServer(page: Page) {
     );
 
   if (serverIsDown) {
-
     const message =
       `${env.ENVIRONMENT.toUpperCase()} environment is unavailable. HTTP Status: ${
         statusCode ?? 'NO RESPONSE'
       }`;
 
-    console.error('\n================================================');
+    console.error(
+      '\n================================================'
+    );
     console.error(
       `🚨 ${env.ENVIRONMENT.toUpperCase()} ENVIRONMENT UNAVAILABLE`
     );
-    console.error('================================================');
-    console.error(`Environment: ${env.ENVIRONMENT}`);
-    console.error(`URL: ${env.BASE_URL}`);
+    console.error(
+      '================================================'
+    );
+    console.error(
+      `Environment: ${env.ENVIRONMENT}`
+    );
+    console.error(
+      `URL: ${env.BASE_URL}`
+    );
     console.error(
       `HTTP Status: ${statusCode ?? 'NO RESPONSE'}`
     );
-    console.error('Reason: Server returned an error');
-    console.error('Action: All dependent tests will not run.');
-    console.error('================================================\n');
+    console.error(
+      'Reason: Server returned an error'
+    );
+    console.error(
+      'Action: All dependent tests will not run.'
+    );
+    console.error(
+      '================================================\n'
+    );
 
     logger.error(message);
 
@@ -126,11 +162,12 @@ async function checkServer(page: Page) {
   return response;
 }
 
-
-// ============================================================
-// Authenticate User
-// ============================================================
-
+/**
+ * Authenticates the test user and saves the authenticated browser session.
+ *
+ * The saved session allows the remaining tests to start already logged in,
+ * so each test does not need to repeat the login process.
+ */
 test('Authenticate User', async ({ page }) => {
 
   // ------------------------------------------------------------
@@ -140,15 +177,14 @@ test('Authenticate User', async ({ page }) => {
   await test.step(
     'Open Login Page + Check Server',
     async () => {
-
       logger.info(
         `Opening ${env.ENVIRONMENT} login page...`
       );
 
+      // Confirm that the environment is available before attempting login.
       await checkServer(page);
     }
   );
-
 
   // ------------------------------------------------------------
   // STEP 2: Login
@@ -157,27 +193,34 @@ test('Authenticate User', async ({ page }) => {
   await test.step(
     'Login',
     async () => {
-
       try {
-
+        // Log in through the same UI that a real user would use.
         await login(page);
-
       } catch (error: unknown) {
-
-        console.error('\n================================================');
+        console.error(
+          '\n================================================'
+        );
         console.error(
           `🚨 ${env.ENVIRONMENT.toUpperCase()} LOGIN FAILED`
         );
-        console.error('================================================');
-        console.error(`Environment: ${env.ENVIRONMENT}`);
-        console.error(`URL: ${env.BASE_URL}`);
+        console.error(
+          '================================================'
+        );
+        console.error(
+          `Environment: ${env.ENVIRONMENT}`
+        );
+        console.error(
+          `URL: ${env.BASE_URL}`
+        );
         console.error(
           'Reason: Invalid credentials or login failure'
         );
         console.error(
           'Action: All dependent tests will not run.'
         );
-        console.error('================================================\n');
+        console.error(
+          '================================================\n'
+        );
 
         if (error instanceof Error) {
           logger.error(
@@ -190,7 +233,6 @@ test('Authenticate User', async ({ page }) => {
     }
   );
 
-
   // ------------------------------------------------------------
   // STEP 3: Handle Session Timeout
   // ------------------------------------------------------------
@@ -198,7 +240,6 @@ test('Authenticate User', async ({ page }) => {
   await test.step(
     'Handle Session Timeout',
     async () => {
-
       const sessionExpired =
         page.getByText(
           SESSION_TIMEOUT_MESSAGE
@@ -209,6 +250,7 @@ test('Authenticate User', async ({ page }) => {
           .isVisible()
           .catch(() => false);
 
+      // No session timeout was detected, so continue normally.
       if (!isSessionExpired) {
         return;
       }
@@ -217,14 +259,16 @@ test('Authenticate User', async ({ page }) => {
         `Session expired on ${env.ENVIRONMENT}. Reloading...`
       );
 
-      const response =
-        await page.reload({
-          waitUntil: 'domcontentloaded',
-        });
+      // Reload the page to start a fresh session.
+      const response = await page.reload({
+        waitUntil: 'domcontentloaded',
+      });
 
       const statusCode =
         response?.status();
 
+      // If the environment became unavailable while recovering
+      // the session, stop the setup immediately.
       if (
         !response ||
         (
@@ -232,26 +276,32 @@ test('Authenticate User', async ({ page }) => {
           statusCode >= 500
         )
       ) {
-
         const message =
           `${env.ENVIRONMENT.toUpperCase()} environment is unavailable after session timeout. HTTP Status: ${
             statusCode ?? 'NO RESPONSE'
           }`;
 
-        console.error('\n================================================');
+        console.error(
+          '\n================================================'
+        );
         console.error(
           `🚨 ${env.ENVIRONMENT.toUpperCase()} ENVIRONMENT UNAVAILABLE`
         );
-        console.error('================================================');
+        console.error(
+          '================================================'
+        );
         console.error(message);
         console.error(
           'Action: All dependent tests will not run.'
         );
-        console.error('================================================\n');
+        console.error(
+          '================================================\n'
+        );
 
         throw new Error(message);
       }
 
+      // Re-authenticate after the expired session is cleared.
       await login(page);
 
       logger.info(
@@ -260,15 +310,13 @@ test('Authenticate User', async ({ page }) => {
     }
   );
 
-
   // ------------------------------------------------------------
-  // STEP 4: Invalid Credentials Check
+  // STEP 4: Verify Login Credentials
   // ------------------------------------------------------------
 
   await test.step(
     'Verify Login Credentials',
     async () => {
-
       const invalidLogin =
         page.getByText(
           INVALID_LOGIN_REGEX
@@ -280,20 +328,25 @@ test('Authenticate User', async ({ page }) => {
           .catch(() => false);
 
       if (isInvalid) {
-
         const message =
           `Invalid login credentials for ${env.ENVIRONMENT} environment.`;
 
-        console.error('\n================================================');
+        console.error(
+          '\n================================================'
+        );
         console.error(
           `🚨 ${env.ENVIRONMENT.toUpperCase()} LOGIN FAILED`
         );
-        console.error('================================================');
+        console.error(
+          '================================================'
+        );
         console.error(message);
         console.error(
           'Action: All dependent tests will not run.'
         );
-        console.error('================================================\n');
+        console.error(
+          '================================================\n'
+        );
 
         throw new Error(message);
       }
@@ -304,7 +357,6 @@ test('Authenticate User', async ({ page }) => {
     }
   );
 
-
   // ------------------------------------------------------------
   // STEP 5: Verify Successful Login
   // ------------------------------------------------------------
@@ -312,11 +364,11 @@ test('Authenticate User', async ({ page }) => {
   await test.step(
     'Verify Successful Login',
     async () => {
-
       logger.info(
         `Verifying ${env.ENVIRONMENT} dashboard...`
       );
 
+      // A successful login should take the user away from the login page.
       await expect(page).not.toHaveURL(
         /\/login\/index\.php/
       );
@@ -327,7 +379,6 @@ test('Authenticate User', async ({ page }) => {
     }
   );
 
-
   // ------------------------------------------------------------
   // STEP 6: Save Authentication State
   // ------------------------------------------------------------
@@ -335,11 +386,11 @@ test('Authenticate User', async ({ page }) => {
   await test.step(
     'Save Authentication State',
     async () => {
-
       logger.info(
         `Creating authentication directory for ${env.ENVIRONMENT}...`
       );
 
+      // Create the folder if it does not already exist.
       fs.mkdirSync(
         'playwright/.auth',
         {
@@ -351,6 +402,8 @@ test('Authenticate User', async ({ page }) => {
         `Saving ${env.ENVIRONMENT} authentication state...`
       );
 
+      // Save cookies and other browser session information so
+      // subsequent tests can start as an authenticated user.
       await page.context().storageState({
         path: STORAGE_STATE,
       });
@@ -360,5 +413,4 @@ test('Authenticate User', async ({ page }) => {
       );
     }
   );
-
 });
