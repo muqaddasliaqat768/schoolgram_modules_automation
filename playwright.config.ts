@@ -16,6 +16,7 @@ import { env } from './utils/env';
 
 export default defineConfig({
   testDir: './tests',
+  
 
   // WHY single-worker (this is the suite's only real speed ceiling):
   // The tests are NOT coupled by data — every test mints run-unique users
@@ -45,10 +46,9 @@ export default defineConfig({
   },
 
   reporter: [
-    ['html'],
-    ['list'],
-    ['junit', { outputFile: 'results.xml' }],
-  ],
+  ['html', { outputFolder: 'playwright-report', open: 'never' }],
+  ['junit', { outputFile: 'test-results/junit.xml' }],
+],
 
   use: {
     baseURL: env.BASE_URL,
