@@ -13,38 +13,12 @@ import {
 
 import { login } from '../utils/login';
 
-/**
- * Authentication setup for the test suite.
- *
- * This setup runs before the main test project and prepares a valid
- * logged-in session for the tests.
- *
- * User flow:
- * 1. Verify that the selected environment is available.
- * 2. Open the login page.
- * 3. Log in using the configured test account.
- * 4. Handle a session timeout if it occurs.
- * 5. Verify that the login was successful.
- * 6. Save the authenticated session for the remaining tests.
- *
- * Environment-specific values such as the URL and credentials are
- * provided through the environment configuration.
- */
-
-/**
- * Checks whether the test environment is available before starting
- * the authentication process.
- *
- * If the server is unavailable, the setup stops immediately instead
- * of allowing every dependent test to fail individually.
- */
 async function checkServer(page: Page) {
   logger.info('Checking server status...');
 
   let response;
 
   try {
-    // Open the login page to confirm that the environment is reachable.
     response = await page.goto(
       `${env.BASE_URL}/login/index.php`,
       {
@@ -101,8 +75,6 @@ async function checkServer(page: Page) {
     }`
   );
 
-  // Read the page content so known server-error messages can also
-  // be detected when the server returns an unexpected response page.
   const body =
     await page.locator('body').textContent();
 
@@ -162,17 +134,7 @@ async function checkServer(page: Page) {
   return response;
 }
 
-/**
- * Authenticates the test user and saves the authenticated browser session.
- *
- * The saved session allows the remaining tests to start already logged in,
- * so each test does not need to repeat the login process.
- */
 test('Authenticate User', async ({ page }) => {
-
-  // ------------------------------------------------------------
-  // STEP 1: Open Login Page + Check Server
-  // ------------------------------------------------------------
 
   await test.step(
     'Open Login Page + Check Server',
@@ -181,20 +143,14 @@ test('Authenticate User', async ({ page }) => {
         `Opening ${env.ENVIRONMENT} login page...`
       );
 
-      // Confirm that the environment is available before attempting login.
       await checkServer(page);
     }
   );
-
-  // ------------------------------------------------------------
-  // STEP 2: Login
-  // ------------------------------------------------------------
 
   await test.step(
     'Login',
     async () => {
       try {
-        // Log in through the same UI that a real user would use.
         await login(page);
       } catch (error: unknown) {
         console.error(
@@ -233,10 +189,6 @@ test('Authenticate User', async ({ page }) => {
     }
   );
 
-  // ------------------------------------------------------------
-  // STEP 3: Handle Session Timeout
-  // ------------------------------------------------------------
-
   await test.step(
     'Handle Session Timeout',
     async () => {
@@ -250,7 +202,6 @@ test('Authenticate User', async ({ page }) => {
           .isVisible()
           .catch(() => false);
 
-      // No session timeout was detected, so continue normally.
       if (!isSessionExpired) {
         return;
       }
@@ -259,7 +210,6 @@ test('Authenticate User', async ({ page }) => {
         `Session expired on ${env.ENVIRONMENT}. Reloading...`
       );
 
-      // Reload the page to start a fresh session.
       const response = await page.reload({
         waitUntil: 'domcontentloaded',
       });
@@ -267,8 +217,6 @@ test('Authenticate User', async ({ page }) => {
       const statusCode =
         response?.status();
 
-      // If the environment became unavailable while recovering
-      // the session, stop the setup immediately.
       if (
         !response ||
         (
@@ -301,7 +249,6 @@ test('Authenticate User', async ({ page }) => {
         throw new Error(message);
       }
 
-      // Re-authenticate after the expired session is cleared.
       await login(page);
 
       logger.info(
@@ -309,10 +256,6 @@ test('Authenticate User', async ({ page }) => {
       );
     }
   );
-
-  // ------------------------------------------------------------
-  // STEP 4: Verify Login Credentials
-  // ------------------------------------------------------------
 
   await test.step(
     'Verify Login Credentials',
@@ -357,10 +300,6 @@ test('Authenticate User', async ({ page }) => {
     }
   );
 
-  // ------------------------------------------------------------
-  // STEP 5: Verify Successful Login
-  // ------------------------------------------------------------
-
   await test.step(
     'Verify Successful Login',
     async () => {
@@ -368,7 +307,6 @@ test('Authenticate User', async ({ page }) => {
         `Verifying ${env.ENVIRONMENT} dashboard...`
       );
 
-      // A successful login should take the user away from the login page.
       await expect(page).not.toHaveURL(
         /\/login\/index\.php/
       );
@@ -379,10 +317,6 @@ test('Authenticate User', async ({ page }) => {
     }
   );
 
-  // ------------------------------------------------------------
-  // STEP 6: Save Authentication State
-  // ------------------------------------------------------------
-
   await test.step(
     'Save Authentication State',
     async () => {
@@ -390,7 +324,6 @@ test('Authenticate User', async ({ page }) => {
         `Creating authentication directory for ${env.ENVIRONMENT}...`
       );
 
-      // Create the folder if it does not already exist.
       fs.mkdirSync(
         'playwright/.auth',
         {
@@ -402,8 +335,6 @@ test('Authenticate User', async ({ page }) => {
         `Saving ${env.ENVIRONMENT} authentication state...`
       );
 
-      // Save cookies and other browser session information so
-      // subsequent tests can start as an authenticated user.
       await page.context().storageState({
         path: STORAGE_STATE,
       });

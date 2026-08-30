@@ -18,39 +18,10 @@ import {
 
 import { VALIDATION_MESSAGES, ROUTES } from '../utils/constants';
 
-/**
- * User Management end-to-end tests.
- *
- * These tests cover the main user-management journeys an administrator can
- * perform:
- *
- * - Create a user
- * - Validate incorrect user information
- * - Enroll a user in a course
- * - Search for a user
- * - Edit user information
- * - Delete a user
- * - Export users to CSV
- * - Bulk delete users
- * - Upload users through CSV
- *
- * Each test is independent and can be executed on its own.
- * Positive tests create their own test data to avoid conflicts with other tests.
- */
 test.describe('User Management', () => {
   let dashboardPage: DashboardPage;
   let userManagementPage: UserManagementPage;
 
-  /**
-   * Before every test:
-   *
-   * 1. Open the Dashboard.
-   * 2. Expand the navigation sidebar.
-   * 3. Open User Management.
-   *
-   * Starting every test from the same place ensures that tests do not depend
-   * on the result or browser state of a previous test.
-   */
   test.beforeEach(async ({ page }) => {
     dashboardPage = new DashboardPage(page);
     userManagementPage = new UserManagementPage(page);
@@ -60,23 +31,13 @@ test.describe('User Management', () => {
     await userManagementPage.open();
   });
 
-  // ============================================================
-  // NEGATIVE TESTS
-  // ============================================================
-
   test.describe('User Management Validation', () => {
-    /**
-     * Verify that the system prevents an administrator from submitting
-     * the Create User form when required information is missing.
-     */
     test('should show required field validations', async () => {
       await test.step('Open Create User form', async () => {
         await userManagementPage.openCreateUser();
       });
 
       await test.step('Submit the empty form', async () => {
-        // No information is entered because the purpose of this test
-        // is to verify validation for required fields.
         await userManagementPage.submit();
       });
 
@@ -101,18 +62,12 @@ test.describe('User Management', () => {
       });
     });
 
-    /**
-     * Verify that the system rejects a username that does not follow
-     * the application's username format rules.
-     */
     test('should validate username format', async () => {
       await test.step('Open Create User form', async () => {
         await userManagementPage.openCreateUser();
       });
 
       await test.step('Enter an invalid username', async () => {
-        // All other fields contain valid information so the username
-        // is the only reason the form should be rejected.
         await userManagementPage.fillRequiredFields({
           ...testUser,
           username: invalidUsername,
@@ -132,12 +87,6 @@ test.describe('User Management', () => {
       });
     });
 
-    /**
-     * Verify that invalid email formats are rejected by the Create User form.
-     *
-     * Multiple invalid formats are checked to make sure validation is not
-     * limited to only one specific invalid email pattern.
-     */
     test('should validate email format', async () => {
       await userManagementPage.openCreateUser();
 
@@ -145,8 +94,6 @@ test.describe('User Management', () => {
         await test.step(
           `Verify invalid email: ${email}`,
           async () => {
-            // Only the email value is changed. All other information remains
-            // valid so the test specifically verifies email validation.
             await userManagementPage.fillRequiredFields({
               ...testUser,
               email,
@@ -165,10 +112,6 @@ test.describe('User Management', () => {
       }
     });
 
-    /**
-     * Verify that passwords which do not satisfy the application's
-     * password requirements are rejected.
-     */
     test('should validate password format', async () => {
       await userManagementPage.openCreateUser();
 
@@ -176,8 +119,6 @@ test.describe('User Management', () => {
         await test.step(
           `Verify invalid password: ${password}`,
           async () => {
-            // The remaining user information is valid. This ensures the
-            // password is the only invalid value in the form.
             await userManagementPage.fillRequiredFields(testUser);
             await userManagementPage.passwordInput.fill(password);
             await userManagementPage.submit();
@@ -191,16 +132,6 @@ test.describe('User Management', () => {
     });
   });
 
-  // ============================================================
-  // CREATE USER
-  // ============================================================
-
-  /**
-   * Verify the complete user-creation journey:
-   *
-   * Create User → Success → Assign Course → Enroll User →
-   * Return to Users List → Verify User Exists
-   */
   test('Successfully create user, enroll in the course & redirect to the user list page', async () => {
     const newUser = buildUniqueTestUser();
 
@@ -226,10 +157,8 @@ test.describe('User Management', () => {
     await test.step(
       'Enroll the new user in a course',
       async () => {
-        // Select a course category first so available courses are displayed.
         await userManagementPage.selectFirstCourseCategory();
 
-        // Select the first available course and confirm enrollment.
         await userManagementPage.enrollInFirstAvailableCourse();
       },
     );
@@ -250,23 +179,11 @@ test.describe('User Management', () => {
     await test.step(
       'Verify the newly created user appears in the list',
       async () => {
-        // Verifying the actual user record confirms that creation was
-        // successfully completed and persisted in the system.
         await userManagementPage.narrowToUserRow(newUser.username);
       },
     );
   });
 
-  // ============================================================
-  // EDIT + DELETE USER
-  // ============================================================
-
-  /**
-   * Verify that an administrator can:
-   *
-   * Search User → Open Profile → Edit Details → Save Changes →
-   * Return to Users List → Verify Changes → Delete User
-   */
   test('Search created user, edit profile, redirect back to list & delete it', async () => {
     const newUser = buildUniqueTestUser();
     const updatedProfile = buildProfileUpdate();
@@ -322,8 +239,6 @@ test.describe('User Management', () => {
     await test.step(
       'Verify the updated information is displayed',
       async () => {
-        // Search by username because it remains unchanged after the edit.
-        // Then verify that the updated first and last names are displayed.
         const row = await userManagementPage.narrowToUserRow(
           newUser.username,
         );
@@ -344,21 +259,11 @@ test.describe('User Management', () => {
         await userManagementPage.expectUserDeletedModal();
         await userManagementPage.dismissModal();
 
-        // Final verification confirms the user was actually removed
-        // rather than only checking that a success message appeared.
         await userManagementPage.expectUserGone(newUser.username);
       },
     );
   });
 
-  // ============================================================
-  // CSV EXPORT
-  // ============================================================
-
-  /**
-   * Verify that an administrator can select multiple users and export
-   * the selected user information as a CSV file.
-   */
   test('Successfully export users CSV with selected fields', async () => {
     const { token, users } = buildUniqueTestUserBatch(2);
 
@@ -378,7 +283,6 @@ test.describe('User Management', () => {
     await test.step(
       'Select the users and open Export CSV',
       async () => {
-        // Search using the shared token so both test users appear together.
         await userManagementPage.searchUser(token);
 
         selectedUsernames =
@@ -397,8 +301,6 @@ test.describe('User Management', () => {
     await test.step(
       'Select the required export fields',
       async () => {
-        // Verify that fields from different information groups can be
-        // selected for the exported CSV.
         await userManagementPage.selectAccountInfoFields();
         await userManagementPage.selectContactInfoFields();
         await userManagementPage.selectEmergencyContactFields();
@@ -411,9 +313,8 @@ test.describe('User Management', () => {
         const download =
           await userManagementPage.exportAndGetDownload();
 
-        // Confirm that the application generated a CSV file.
         expect(download.suggestedFilename()).toMatch(
-          /^Users\..*\.csv$/i,
+          /^Users\b.*\.csv$/i,
         );
 
         const csv = (
@@ -431,8 +332,6 @@ test.describe('User Management', () => {
             cell.replace(/^"|"$/g, '').trim(),
           );
 
-        // Verify that the selected information fields are included
-        // in the exported file.
         expect(header).toEqual(
           expect.arrayContaining([
             'Username',
@@ -447,11 +346,8 @@ test.describe('User Management', () => {
           ]),
         );
 
-        // Header + exactly two selected users.
         expect(rows).toHaveLength(3);
 
-        // Verify that both users selected by the administrator
-        // are present in the exported CSV.
         for (const username of selectedUsernames) {
           expect(csv).toContain(username);
         }
@@ -459,14 +355,6 @@ test.describe('User Management', () => {
     );
   });
 
-  // ============================================================
-  // BULK DELETE
-  // ============================================================
-
-  /**
-   * Verify that an administrator can select multiple users and delete
-   * them together using the Bulk Delete Users option.
-   */
   test('Successfully bulk delete selected users', async () => {
     const { token, users } = buildUniqueTestUserBatch(2);
 
@@ -521,23 +409,11 @@ test.describe('User Management', () => {
     await test.step(
       'Verify both users have been removed',
       async () => {
-        // Search using the shared token and confirm that no matching
-        // users remain in the system.
         await userManagementPage.expectUserGone(token);
       },
     );
   });
 
-  // ============================================================
-  // INVALID CSV UPLOAD
-  // ============================================================
-
-  /**
-   * Verify that the system rejects CSV files that cannot be processed:
-   *
-   * - Empty CSV file
-   * - CSV without the required username column
-   */
   test('Upload invalid file', async () => {
     await userManagementPage.goToUploadUsersPage();
 
@@ -578,16 +454,6 @@ test.describe('User Management', () => {
     );
   });
 
-  // ============================================================
-  // VALID CSV UPLOAD
-  // ============================================================
-
-  /**
-   * Verify the complete CSV user-upload journey:
-   *
-   * Upload CSV → Preview Records → Select Upload Mode →
-   * Wait for Processing → Verify Result Summary → Verify User
-   */
   test('Successfully upload users via valid CSV file', async () => {
     await userManagementPage.goToUploadUsersPage();
 
@@ -614,8 +480,6 @@ test.describe('User Management', () => {
     await test.step(
       'Wait for the CSV upload to complete',
       async () => {
-        // The upload is processed in the background, so wait until
-        // the application reports that processing has completed.
         await userManagementPage.refreshUploadStatus();
 
         await userManagementPage.expectUploadComplete();
@@ -632,8 +496,6 @@ test.describe('User Management', () => {
         expect(summary.passed).toBeGreaterThanOrEqual(1);
         expect(summary.failed).toBeGreaterThanOrEqual(0);
 
-        // Every processed record must be either successfully processed
-        // or reported as failed.
         expect(
           summary.passed + summary.failed,
         ).toBe(summary.total);
@@ -647,8 +509,6 @@ test.describe('User Management', () => {
 
         const [sampleUsername] = SAMPLE_CSV_USERNAMES;
 
-        // Confirm that the uploaded user can actually be found after
-        // the background upload has completed.
         await userManagementPage.narrowToUserRow(
           sampleUsername,
         );

@@ -1,16 +1,3 @@
-// ---------------------------------------------------------------------------
-// Reusable UI login.
-//
-// Used by tests/auth.setup.ts to mint the saved storageState, and by
-// DashboardPage.goto() to recover when a shared-account session expires
-// mid-run. Credentials come from utils/env.ts (never hard-coded here).
-//
-// Moodle protects its login form with a one-time `logintoken`. Because the
-// login page can be loaded more than once before we submit (health check +
-// this call), the first POST can carry a stale token and bounce back to the
-// form — so we reload once and retry before asserting success.
-// ---------------------------------------------------------------------------
-
 import { Page, expect } from '@playwright/test';
 import { env } from './env';
 import { SESSION_TIMEOUT_MESSAGE } from './constants';
@@ -57,10 +44,6 @@ export async function login(page: Page) {
 
   await submitCredentials(page);
 
-  // Moodle bounces back to the login form with this message when the hidden
-  // logintoken is stale — which happens here because the login page is loaded
-  // more than once (health check + this call) and the second load is cached.
-  // A fresh reload issues a matching token; retry once before asserting.
   const stillOnLogin = /\/login\/index\.php/.test(page.url());
   const sessionTimedOut = await page
     .getByText(SESSION_TIMEOUT_MESSAGE)
