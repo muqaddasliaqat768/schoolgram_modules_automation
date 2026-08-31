@@ -10,4 +10,5 @@ results.xml
 
 .env.test
 .env.local
-playwright/.auth/
+playwright/.auth/.env.test
+.env.*
