@@ -6,6 +6,11 @@
   "scripts": {
     "test": "playwright test",
     "test:ui": "playwright test --ui",
+    "test:headed": "HEADED=1 playwright test",
+    "test:smoke": "playwright test --grep @smoke",
+    "test:validation": "playwright test --grep @validation",
+    "test:safe": "playwright test --grep-invert @destructive",
+    "report": "playwright show-report",
     "typecheck": "tsc --noEmit"
   },
   "engines": {

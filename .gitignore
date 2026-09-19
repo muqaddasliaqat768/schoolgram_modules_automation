@@ -12,3 +12,4 @@ results.xml
 .env.local
 playwright/.auth/.env.test
 .env.*
+builds/

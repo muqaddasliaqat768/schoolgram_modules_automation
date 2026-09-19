@@ -17,6 +17,7 @@ import {
 } from '../test-data/userData';
 
 import { VALIDATION_MESSAGES, ROUTES } from '../utils/constants';
+import { installSessionTimeoutGuard } from '../utils/sessionGuard';
 
 test.describe('User Management', () => {
   let dashboardPage: DashboardPage;
@@ -27,11 +28,12 @@ test.describe('User Management', () => {
     userManagementPage = new UserManagementPage(page);
 
     await dashboardPage.goto();
+    await installSessionTimeoutGuard(page);
     await dashboardPage.openSidebar();
     await userManagementPage.open();
   });
 
-  test.describe('User Management Validation', () => {
+  test.describe('User Management Validation', { tag: ['@validation'] }, () => {
     test('should show required field validations', async () => {
       await test.step('Open Create User form', async () => {
         await userManagementPage.openCreateUser();
@@ -132,7 +134,7 @@ test.describe('User Management', () => {
     });
   });
 
-  test('Successfully create user, enroll in the course & redirect to the user list page', async () => {
+  test('Successfully create user, enroll in the course & redirect to the user list page', { tag: ['@smoke'] }, async () => {
     const newUser = buildUniqueTestUser();
 
     await test.step(
@@ -157,7 +159,7 @@ test.describe('User Management', () => {
     await test.step(
       'Enroll the new user in a course',
       async () => {
-        await userManagementPage.selectFirstCourseCategory();
+        await userManagementPage.selectCourseCategoryWithCourses();
 
         await userManagementPage.enrollInFirstAvailableCourse();
       },
@@ -184,7 +186,7 @@ test.describe('User Management', () => {
     );
   });
 
-  test('Search created user, edit profile, redirect back to list & delete it', async () => {
+  test('Search created user, edit profile, redirect back to list & delete it', { tag: ['@destructive'] }, async () => {
     const newUser = buildUniqueTestUser();
     const updatedProfile = buildProfileUpdate();
 
@@ -264,33 +266,14 @@ test.describe('User Management', () => {
     );
   });
 
-  test('Successfully export users CSV with selected fields', async () => {
-    const { token, users } = buildUniqueTestUserBatch(2);
-
-    let selectedUsernames: string[] = [];
-
-    await test.step('Create two users for export', async () => {
-      for (const user of users) {
-        await userManagementPage.createUser(user);
-
-        await userManagementPage.expectUserCreatedModal();
-        await userManagementPage.dismissModal();
-
-        await userManagementPage.goToUsersListViaBreadcrumb();
-      }
-    });
+  test('Successfully export users CSV with selected fields', { tag: ['@export'] }, async () => {
+    let selectedRows: string[] = [];
 
     await test.step(
-      'Select the users and open Export CSV',
+      'Select existing users and open Export CSV',
       async () => {
-        await userManagementPage.searchUser(token);
-
-        selectedUsernames =
-          await userManagementPage.selectUsersByUsername(
-            users.map((user) => user.username),
-          );
-
-        expect(selectedUsernames).toHaveLength(2);
+        selectedRows =
+          await userManagementPage.selectFirstExistingUsers(2);
 
         await userManagementPage.openExportModal();
 
@@ -346,16 +329,26 @@ test.describe('User Management', () => {
           ]),
         );
 
-        expect(rows).toHaveLength(3);
+        expect(rows).toHaveLength(selectedRows.length + 1);
 
-        for (const username of selectedUsernames) {
-          expect(csv).toContain(username);
+        const usernameColumn = header.indexOf('Username');
+
+        for (const row of rows.slice(1)) {
+          const username = row
+            .match(/("([^"]|"")*"|[^,]*)(,|$)/g)![usernameColumn]
+            .replace(/,$/, '')
+            .replace(/^"|"$/g, '')
+            .trim();
+
+          expect(
+            selectedRows.some((text) => text.includes(username)),
+          ).toBe(true);
         }
       },
     );
   });
 
-  test('Successfully bulk delete selected users', async () => {
+  test('Successfully bulk delete selected users', { tag: ['@destructive'] }, async () => {
     const { token, users } = buildUniqueTestUserBatch(2);
 
     let selectedUsernames: string[] = [];
@@ -414,7 +407,7 @@ test.describe('User Management', () => {
     );
   });
 
-  test('Upload invalid file', async () => {
+  test('Upload invalid file', { tag: ['@upload'] }, async () => {
     await userManagementPage.goToUploadUsersPage();
 
     await test.step(
@@ -454,7 +447,7 @@ test.describe('User Management', () => {
     );
   });
 
-  test('Successfully upload users via valid CSV file', async () => {
+  test('Successfully upload users via valid CSV file', { tag: ['@upload'] }, async () => {
     await userManagementPage.goToUploadUsersPage();
 
     await test.step(

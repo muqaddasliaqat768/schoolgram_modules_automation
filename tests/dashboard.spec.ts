@@ -4,6 +4,7 @@ import { DashboardPage } from '../pages/DashboardPage';
 test.describe('Dashboard', () => {
   test(
     'should expand the navigation drawer if collapsed',
+    { tag: ['@smoke'] },
     async ({ page }) => {
       const dashboardPage = new DashboardPage(page);
 

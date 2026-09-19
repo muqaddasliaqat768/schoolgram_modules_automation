@@ -1,14 +1,27 @@
+# Set BASE_URL, SG_USERNAME and SG_PASSWORD as masked CI/CD variables
+# (Settings > CI/CD > Variables).
 stages:
   - test
 
 playwright_tests:
   stage: test
+  image: mcr.microsoft.com/playwright:v1.62.1-noble
+  timeout: 15m
+
+  # Only one pipeline at a time: all runs share one test account/environment.
+  resource_group: playwright-tests
+
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == "web"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
   before_script:
     - npm ci
-    - npx playwright install
 
   script:
+    - npm run typecheck
     - npx playwright test
 
   artifacts:

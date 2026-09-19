@@ -11,7 +11,7 @@ const POLL = {
 
   USER_GONE: { timeout: 30_000, intervals: [1_000, 2_000, 3_000] },
 
-  UPLOAD_JOB: { timeout: 180_000, intervals: [3_000] },
+  UPLOAD_JOB: { timeout: 180_000, intervals: [1_000] },
 };
 
 export class UserManagementPage {
@@ -388,22 +388,51 @@ export class UserManagementPage {
   }
 
 
-  async selectFirstCourseCategory(){
+  /**
+   * Only current-AY categories are listed, so the first category may have no
+   * courses. Try each dropdown option in turn until one lists a course.
+   */
+  async selectCourseCategoryWithCourses(){
 
     await this.waitForLoaderGone();
 
     await expect(this.courseCategorySelect).toBeVisible({ timeout: 30000 });
 
+    const options = this.page.getByRole('option');
+
     await this.courseCategorySelect.click();
 
-    const firstOption =
-      this.page.getByRole('option').first();
+    await expect(options.first()).toBeVisible();
 
-    await expect(firstOption).toBeVisible();
+    const optionLabels = await options.allTextContents();
 
-    await firstOption.click();
+    for (let i = 0; i < optionLabels.length; i++) {
 
-    await this.waitForLoaderGone();
+      if (i > 0) {
+        await this.courseCategorySelect.click();
+        await expect(options.first()).toBeVisible();
+      }
+
+      await options.nth(i).click();
+
+      await this.waitForLoaderGone();
+
+      const hasCourses =
+        await this.availableCoursesList
+          .locator('p')
+          .first()
+          .waitFor({ state: 'visible', timeout: 5000 })
+          .then(() => true, () => false);
+
+      if (hasCourses) {
+        return optionLabels[i].trim();
+      }
+
+    }
+
+    throw new Error(
+      `No course category has an available course. Tried: ${optionLabels.join(', ')}`
+    );
 
   }
 
@@ -479,11 +508,27 @@ export class UserManagementPage {
 
   private isFilteredGetUsers(res: Response, term: string): boolean {
 
-    if (!res.url().includes('action=get_users') || !res.ok()) return false;
+    if (!res.url().includes('lib/ajax/service.php') || !res.ok()) return false;
 
-    const value = new URL(res.url()).searchParams.get('search') ?? '';
+    let calls: unknown;
 
-    return value.split('@')[0] === term;
+    try {
+      calls = JSON.parse(res.request().postData() ?? '');
+    } catch {
+      return false;
+    }
+
+    if (!Array.isArray(calls)) return false;
+
+    return calls.some(call => {
+
+      if (call?.methodname !== 'local_useraccountmanager_get_users') return false;
+
+      const value: string = call.args?.search ?? '';
+
+      return value.split('@')[0] === term;
+
+    });
 
   }
 
@@ -577,14 +622,11 @@ export class UserManagementPage {
 
     await this.searchBox.fill(identifier);
 
-    const marker = `search=${identifier.split('@')[0]}`;
+    const term = identifier.split('@')[0];
 
     await this.page
       .waitForResponse(
-        res =>
-          res.url().includes('action=get_users') &&
-          res.url().includes(marker) &&
-          res.ok(),
+        res => this.isFilteredGetUsers(res, term),
         { timeout: 15000 }
       )
       .catch(() => undefined);
@@ -765,6 +807,42 @@ export class UserManagementPage {
   }
 
 
+  /**
+   * Ticks the first `count` users already in the list, skipping users that
+   * automation itself creates (they may be deleted by parallel tests).
+   * Returns each selected row's text so callers can verify against it.
+   */
+  async selectFirstExistingUsers(count: number){
+
+    await this.waitForLoaderGone();
+
+    await expect(this.dataRows.first()).toBeVisible({ timeout: 15000 });
+
+    const rowTexts: string[] = [];
+
+    const total = await this.dataRows.count();
+
+    for (let i = 0; i < total && rowTexts.length < count; i++){
+
+      const row = this.dataRows.nth(i);
+
+      const text = (await row.innerText()).replace(/\s+/g, ' ').trim();
+
+      if (/testuser_|Automation User/i.test(text)) continue;
+
+      await row.getByRole('checkbox').check();
+
+      rowTexts.push(text);
+
+    }
+
+    expect(rowTexts).toHaveLength(count);
+
+    return rowTexts;
+
+  }
+
+
   async clickBulkDelete(){
 
     await this.waitForLoaderGone();
@@ -810,7 +888,9 @@ export class UserManagementPage {
       .poll(
         async () => {
           await this.fireUserSearch(identifier);
-          return this.noRecordsMessage.isVisible();
+          return this.noRecordsMessage
+            .waitFor({ state: 'visible', timeout: 5000 })
+            .then(() => true, () => false);
         },
         {
           message: `user "${identifier}" still appears in the list after delete`,
